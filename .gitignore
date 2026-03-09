@@ -1,0 +1,32 @@
+# Arduino / trtSmartHome – .gitignore
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Backup- und Temporärdateien
+*.bak
+*.tmp
+*~
+
+# Arduino Build-Artefakte
+build/
+*.hex
+*.elf
+*.map
+
+# Arduino IDE temporäre Dateien
+*.orig
+*.rej
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Editoren
+.vscode/
+.idea/
+*.swp
+*.swo
