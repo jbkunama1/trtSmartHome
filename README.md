@@ -2,7 +2,7 @@
 
 ![License](https://img.shields.io/badge/Lizenz-MIT-blue.svg)
 ![Language](https://img.shields.io/badge/Sprache-Arduino-teal.svg)
-![Version](https://img.shields.io/badge/Version-1.5-green.svg)
+![Version](https://img.shields.io/badge/Version-1.1-green.svg)
 
 > **trtSmartHome** ist ein pädagogisches Modellprojekt eines Smart Home, aufgebaut mit Arduino.  
 > Dieses Modul implementiert einen **Wassermelder** (Water Leak Detection), der bei Wasserkontakt optisch (LED) und akustisch (Buzzer) Alarm schlägt.
@@ -11,14 +11,24 @@
 
 ## 📋 Inhaltsverzeichnis
 
-1. [Projektbeschreibung](#projektbeschreibung)
-2. [Materialliste](#materialliste)
-3. [Pinbelegung](#pinbelegung)
-4. [Sketch – Version 1.5](#sketch--version-15)
-5. [Setup / Inbetriebnahme](#setup--inbetriebnahme)
-6. [Hinweise](#hinweise)
-7. [Dokumentation](#dokumentation)
-8. [Lizenz](#lizenz)
+1. [Versionsverlauf](#versionsverlauf)
+2. [Projektbeschreibung](#projektbeschreibung)
+3. [Materialliste](#materialliste)
+4. [Pinbelegung](#pinbelegung)
+5. [Sketch – Version 1.1](#sketch--version-11)
+6. [Setup / Inbetriebnahme](#setup--inbetriebnahme)
+7. [Hinweise](#hinweise)
+8. [Dokumentation](#dokumentation)
+9. [Lizenz](#lizenz)
+
+---
+
+## 🗂️ Versionsverlauf
+
+| Version | Datei                                                                         | Highlights                                                      |
+|---------|-------------------------------------------------------------------------------|-----------------------------------------------------------------|
+| **1.1** | [`src/WaterSensor_v1_1/`](src/WaterSensor_v1_1/WaterSensor_v1_1.ino) ← aktuell | `millis()` statt `delay()`, Debouncing für stabile Erkennung   |
+| 1.5     | [`src/WaterSensor_v1_5/`](src/WaterSensor_v1_5/WaterSensor_v1_5.ino)          | Basisversion – einfacher Alarm mit digitalem Sensor             |
 
 ---
 
@@ -34,6 +44,11 @@ Dieses Modul – der **Wassermelder** – erkennt Wasserkontakt am Sensor und re
 - 💻 **Serielle Ausgabe** gibt eine Meldung aus (`⚠ Wasser erkannt!`)
 
 Bei trockenem Sensor bleibt alles ruhig und die Ausgabe lautet `✔ Kein Wasser erkannt.`
+
+### ✨ Neu in Version 1.1
+
+- **Nicht-blockierendes Timing:** `delay(500)` wurde durch `millis()` ersetzt. Der Arduino bleibt jederzeit reaktionsfähig – kein „Einfrieren" mehr während der Wartezeit.
+- **Debouncing (Entprellung):** Erst nach **3 aufeinanderfolgenden gleichen Messwerten** wird ein Zustandswechsel akzeptiert. Fehlerhafte Kurzauslösungen durch Vibration oder Schmutz werden so zuverlässig unterdrückt.
 
 ---
 
@@ -66,15 +81,18 @@ Bei trockenem Sensor bleibt alles ruhig und die Ausgabe lautet `✔ Kein Wasser 
 
 ---
 
-## 🖥️ Sketch – Version 1.5
+## 🖥️ Sketch – Version 1.1
 
-Datei: [`src/WaterSensor_v1_5/WaterSensor_v1_5.ino`](src/WaterSensor_v1_5/WaterSensor_v1_5.ino)
+Datei: [`src/WaterSensor_v1_1/WaterSensor_v1_1.ino`](src/WaterSensor_v1_1/WaterSensor_v1_1.ino)
 
 ```cpp
 // ============================================================
 // trtSmartHome – Wassermelder (Smarthome Modell)
-// Version: 1.5
+// Version: 1.1
 // Beschreibung: Erkennt Wasser und löst Alarm aus.
+//               Verbesserungen gegenüber v1.5:
+//               - Nicht-blockierendes Timing mit millis()
+//               - Entprellung (Debouncing) für stabile Erkennung
 // ============================================================
 
 // --- Pin-Belegung ---
@@ -82,30 +100,57 @@ const int wasserSensorPin = 2;  // Digitales Signal vom Sensor
 const int summerPin       = 8;  // Summer (Buzzer)
 const int ledPin          = 7;  // Rote LED
 
+// --- Debouncing-Konfiguration ---
+const int  DEBOUNCE_COUNT = 3;    // Anzahl gleicher Messungen zur Bestätigung
+const long INTERVAL_MS    = 500;  // Messintervall in Millisekunden
+
+// --- Zustandsvariablen ---
+int  letzterStatus    = HIGH;
+int  roherStatus      = HIGH;
+int  debounceZaehler  = 0;
+unsigned long letzteZeit = 0;
+
 void setup() {
   pinMode(wasserSensorPin, INPUT);
   pinMode(summerPin, OUTPUT);
   pinMode(ledPin, OUTPUT);
   Serial.begin(9600);
-  Serial.println("trtSmartHome – Wassermelder bereit.");
+  Serial.println("trtSmartHome – Wassermelder v1.1 bereit.");
 }
 
 void loop() {
-  int wasserStatus = digitalRead(wasserSensorPin);
+  unsigned long jetzt = millis();
 
-  if (wasserStatus == LOW) {
-    // Wasser erkannt
+  if (jetzt - letzteZeit >= INTERVAL_MS) {
+    letzteZeit = jetzt;
+
+    int aktuellerRohwert = digitalRead(wasserSensorPin);
+
+    if (aktuellerRohwert == roherStatus) {
+      debounceZaehler++;
+    } else {
+      roherStatus     = aktuellerRohwert;
+      debounceZaehler = 1;
+    }
+
+    if (debounceZaehler >= DEBOUNCE_COUNT && aktuellerRohwert != letzterStatus) {
+      letzterStatus   = aktuellerRohwert;
+      debounceZaehler = 0;
+      alarmAktualisieren(letzterStatus);
+    }
+  }
+}
+
+void alarmAktualisieren(int status) {
+  if (status == LOW) {
     digitalWrite(summerPin, HIGH);
     digitalWrite(ledPin, HIGH);
     Serial.println("⚠ Wasser erkannt!");
   } else {
-    // Kein Wasser
     digitalWrite(summerPin, LOW);
     digitalWrite(ledPin, LOW);
     Serial.println("✔ Kein Wasser erkannt.");
   }
-
-  delay(500);
 }
 ```
 
@@ -122,7 +167,7 @@ void loop() {
    - Rote LED über 220-Ω-Widerstand → **D7** am Arduino
 
 2. **Arduino IDE öffnen:**
-   - Datei `src/WaterSensor_v1_5/WaterSensor_v1_5.ino` laden
+   - Datei `src/WaterSensor_v1_1/WaterSensor_v1_1.ino` laden
 
 3. **Board und Port auswählen:**
    - Unter `Werkzeuge > Board` das richtige Arduino-Board wählen (z. B. *Arduino Uno*)
@@ -149,6 +194,7 @@ void loop() {
 - Der **220-Ω-Widerstand** vor der LED ist zwingend erforderlich, um die LED nicht zu beschädigen.
 - Der Sketch wurde für den Einsatz im Unterricht entwickelt und ist bewusst einfach gehalten.
 - Baudrate des Seriellen Monitors muss auf **9600 Baud** eingestellt sein.
+- **Debounce-Zähler** und **Intervall** können oben in den Konstanten `DEBOUNCE_COUNT` und `INTERVAL_MS` angepasst werden.
 
 ---
 
