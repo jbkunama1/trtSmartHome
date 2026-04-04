@@ -2,7 +2,7 @@
 
 ![License](https://img.shields.io/badge/Lizenz-MIT-blue.svg)
 ![Language](https://img.shields.io/badge/Sprache-Arduino-teal.svg)
-![Version](https://img.shields.io/badge/Version-2.0-green.svg)
+![Version](https://img.shields.io/badge/Version-3.0-green.svg)
 
 > **trtSmartHome** ist ein pädagogisches Modellprojekt eines Smart Home, aufgebaut mit Arduino.  
 > Dieses Modul implementiert einen **Wassermelder** (Water Leak Detection), der bei Wasserkontakt optisch (LED) und akustisch (Buzzer) Alarm schlägt.
@@ -15,11 +15,14 @@
 2. [Projektbeschreibung](#projektbeschreibung)
 3. [Materialliste](#materialliste)
 4. [Pinbelegung](#pinbelegung)
-5. [Sketch – Version 2.0](#sketch--version-20)
-6. [Setup / Inbetriebnahme](#setup--inbetriebnahme)
-7. [Hinweise](#hinweise)
-8. [Dokumentation](#dokumentation)
-9. [Lizenz](#lizenz)
+5. [Sketch – Version 3.0](#sketch--version-30)
+6. [Konfiguration](#konfiguration)
+7. [Setup / Inbetriebnahme](#setup--inbetriebnahme)
+8. [Webinterface](#webinterface)
+9. [Telegram-Benachrichtigung](#telegram-benachrichtigung)
+10. [Hinweise](#hinweise)
+11. [Dokumentation](#dokumentation)
+12. [Lizenz](#lizenz)
 
 ---
 
@@ -27,7 +30,8 @@
 
 | Version | Datei                                                                         | Highlights                                                                   |
 |---------|-------------------------------------------------------------------------------|------------------------------------------------------------------------------|
-| **2.0** | [`src/WaterSensor_v2/`](src/WaterSensor_v2/WaterSensor_v2.ino) ← aktuell     | Analoge Alarmstufen, LCD-Display (I2C), Stummschalttaste                     |
+| **3.0** | [`src/WaterSensor_v3/`](src/WaterSensor_v3/WaterSensor_v3.ino) ← aktuell     | ESP32, WLAN, Telegram-Alarm, Webinterface, NTP-Zeitstempel                  |
+| 2.0     | [`src/WaterSensor_v2/`](src/WaterSensor_v2/WaterSensor_v2.ino)               | Analoge Alarmstufen, LCD-Display (I2C), Stummschalttaste                    |
 | 1.1     | [`src/WaterSensor_v1_1/`](src/WaterSensor_v1_1/WaterSensor_v1_1.ino)          | `millis()` statt `delay()`, Debouncing für stabile Erkennung                |
 | 1.5     | [`src/WaterSensor_v1_5/`](src/WaterSensor_v1_5/WaterSensor_v1_5.ino)          | Basisversion – einfacher Alarm mit digitalem Sensor                          |
 
@@ -46,137 +50,155 @@ Dieses Modul – der **Wassermelder** – erkennt Wasserkontakt am Sensor und re
 
 Bei trockenem Sensor bleibt alles ruhig und die Ausgabe lautet `✔ Kein Wasser erkannt.`
 
-### ✨ Neu in Version 2.0
+### ✨ Neu in Version 3.0
 
-- **Analoge Alarmstufen:** Statt nur EIN/AUS werden drei Stufen unterschieden:
-  - ✅ **TROCKEN** – kein Alarm
-  - ⚠️ **FEUCHT** – kurzer Warnton (800 Hz), LED leuchtet
-  - 🚨 **NASS** – Dauerton (1200 Hz), LED leuchtet
-- **LCD-Display (16×2, I2C):** Zeigt Alarmstufe und aktuellen Analogwert direkt am Gerät an – kein Serial Monitor nötig.
-- **Stummschalttaste:** Drücken deaktiviert den Buzzer, LED und LCD bleiben aktiv. Erneutes Drücken reaktiviert ihn.
-- Aufgebaut auf v1.1 (weiterhin `millis()` + Debouncing enthalten)
+- **ESP32-Plattform:** Leistungsstärkerer Mikrocontroller mit eingebautem WLAN/Bluetooth.
+- **WLAN-Anbindung:** Verbindet sich automatisch mit dem konfigurierten Netzwerk.
+- **Telegram-Benachrichtigung:** Sendet bei Alarm sofort eine Nachricht an einen Telegram-Bot (mit konfigurierter Mindestpause, um Flut-Nachrichten zu vermeiden).
+- **Webinterface:** Einfache Statusseite im Browser – zeigt Alarmstufe, Buzzer-Status und das Ereignisprotokoll. Aktualisiert sich alle 5 Sekunden automatisch.
+- **NTP-Zeitstempel:** Synchronisiert die Uhrzeit über das Internet; jedes Ereignis wird mit Datum und Uhrzeit protokolliert.
+- **Ereignisprotokoll:** Die letzten 10 Ereignisse werden im Speicher gehalten und im Webinterface angezeigt.
+- Aufgebaut auf v2.0 (weiterhin analoge Alarmstufen + Stummschalttaste enthalten)
 
 ---
 
 ## 📦 Materialliste
 
-| Nr. | Komponente                         | Anzahl   |
-|-----|------------------------------------|----------|
-| 1   | Arduino Uno / Nano / Mega          | 1×       |
-| 2   | Wasserstandssensor (z. B. YL-83)   | 1×       |
-| 3   | Summer (Buzzer, **passiv**)        | 1×       |
-| 4   | Rote LED                           | 1×       |
-| 5   | Widerstand 220 Ω                   | 1×       |
-| 6   | LCD-Display 16×2 (I2C, z. B. PCF8574) | 1×    |
-| 7   | Taster / Drucktaste                | 1×       |
-| 8   | Jumper-Kabel                       | mehrere  |
-| 9   | Breadboard                         | 1×       |
-| 10  | USB-Kabel                          | 1×       |
+| Nr. | Komponente                              | Anzahl   |
+|-----|-----------------------------------------|----------|
+| 1   | ESP32 DevKit V1 (oder kompatibel)       | 1×       |
+| 2   | Wasserstandssensor (z. B. YL-83)        | 1×       |
+| 3   | Summer (Buzzer, **passiv**)             | 1×       |
+| 4   | Rote LED                                | 1×       |
+| 5   | Widerstand 220 Ω                        | 1×       |
+| 6   | Taster / Drucktaste                     | 1×       |
+| 7   | Jumper-Kabel                            | mehrere  |
+| 8   | Breadboard                              | 1×       |
+| 9   | USB-Kabel (Micro-USB oder USB-C)        | 1×       |
+| 10  | WLAN-Router (2,4 GHz)                   | 1×       |
 
 ---
 
 ## ⚡ Pinbelegung
 
-| Komponente                    | Arduino-Pin | Modus          |
+| Komponente                    | ESP32-Pin   | Modus          |
 |-------------------------------|-------------|----------------|
-| Wasserstandssensor (AO)       | A0          | ANALOG INPUT   |
-| Wasserstandssensor (DO)       | D2          | INPUT          |
-| Summer (Buzzer, passiv)       | D8          | OUTPUT (PWM)   |
-| Rote LED                      | D7          | OUTPUT         |
-| Stummschalttaste              | D3          | INPUT_PULLUP   |
-| LCD SDA                       | A4 (SDA)    | I2C Daten      |
-| LCD SCL                       | A5 (SCL)    | I2C Takt       |
-| Wasserstandssensor (VCC)      | 5V          | Stromversorgung|
+| Wasserstandssensor (AO)       | GPIO34      | ANALOG INPUT   |
+| Summer (Buzzer, passiv)       | GPIO26      | OUTPUT (PWM)   |
+| Rote LED                      | GPIO27      | OUTPUT         |
+| Stummschalttaste              | GPIO25      | INPUT_PULLUP   |
+| Wasserstandssensor (VCC)      | 3V3 oder 5V | Stromversorgung|
 | Wasserstandssensor (GND)      | GND         | Masse          |
-| LCD VCC                       | 5V          | Stromversorgung|
-| LCD GND                       | GND         | Masse          |
 
-> 💡 **Hinweis:** Die rote LED wird über einen **220-Ω-Widerstand** an Pin D7 angeschlossen.  
-> 💡 **LCD-Adresse:** Standard ist `0x27`. Falls das Display nicht reagiert, `0x3F` im Sketch probieren.  
-> 💡 **Buzzer:** In v2.0 wird `tone()` verwendet → **passiver Buzzer** erforderlich (nicht aktiv).
+> 💡 **GPIO34** ist auf dem ESP32 nur als Eingang nutzbar (kein OUTPUT, kein PWM) – ideal für den Sensor.  
+> 💡 Der ESP32 hat eingebautes WLAN – kein Shield oder Zusatzmodul nötig.  
+> 💡 **Passiver Buzzer** erforderlich (wird mit `tone()` / PWM angesteuert).
 
 ---
 
-## 🖥️ Sketch – Version 2.0
+## 🖥️ Sketch – Version 3.0
 
-Datei: [`src/WaterSensor_v2/WaterSensor_v2.ino`](src/WaterSensor_v2/WaterSensor_v2.ino)
+Datei: [`src/WaterSensor_v3/WaterSensor_v3.ino`](src/WaterSensor_v3/WaterSensor_v3.ino)
+
+Den vollständigen, gut kommentierten Sketch findest du direkt in der Datei oben.  
+Hier die wichtigsten Konfigurationszeilen:
 
 ```cpp
-// ============================================================
-// trtSmartHome – Wassermelder v2.0
-// Analoge Alarmstufen, LCD (I2C), Stummschalttaste
-// ============================================================
-#include <Wire.h>
-#include <LiquidCrystal_I2C.h>
-
-const int wasserSensorAnalog  = A0;
-const int summerPin           = 8;
-const int ledPin              = 7;
-const int stummTastePin       = 3;
-
-LiquidCrystal_I2C lcd(0x27, 16, 2);
-
-const int SCHWELLE_FEUCHT = 100;
-const int SCHWELLE_NASS   = 500;
-const long INTERVAL_MS    = 500;
-
-unsigned long letzteZeit = 0;
-bool stummgeschaltet = false;
-bool letzteTasteGedrueckt = false;
-int  letzteStufe = -1;
-
-enum Alarmstufe { TROCKEN, FEUCHT, NASS };
-
-void setup() { /* ... */ }
-void loop()  { /* ... */ }
+const char* WIFI_SSID      = "DEIN_WLAN_NAME";
+const char* WIFI_PASSWORT  = "DEIN_WLAN_PASSWORT";
+const char* BOT_TOKEN      = "DEIN_TELEGRAM_BOT_TOKEN";
+const char* CHAT_ID        = "DEINE_TELEGRAM_CHAT_ID";
 ```
 
-> Den vollständigen Sketch findest du in [`src/WaterSensor_v2/WaterSensor_v2.ino`](src/WaterSensor_v2/WaterSensor_v2.ino).
+---
+
+## ⚙️ Konfiguration
+
+### Telegram-Bot einrichten
+1. In Telegram [@BotFather](https://t.me/BotFather) öffnen
+2. `/newbot` eingeben und den Anweisungen folgen
+3. Den ausgegebenen **Bot-Token** in `BOT_TOKEN` eintragen
+4. Den Bot anschreiben, dann über `https://api.telegram.org/bot<TOKEN>/getUpdates` die `chat.id` ermitteln und in `CHAT_ID` eintragen
+
+### Schwellenwerte anpassen
+```cpp
+const int SCHWELLE_FEUCHT = 500;   // ESP32 ADC: 0–4095
+const int SCHWELLE_NASS   = 2000;
+```
+Diese Werte im Seriellen Monitor bei trockenem und nassem Sensor ablesen und anpassen.
 
 ---
 
 ## 🔧 Setup / Inbetriebnahme
 
-1. **Bibliothek installieren:**
-   - Arduino IDE öffnen → `Sketch > Bibliothek einbinden > Bibliotheken verwalten`
-   - Nach **"LiquidCrystal I2C"** suchen (Autor: Frank de Brabander)
-   - Installieren
+1. **ESP32-Board-Package installieren:**
+   - Arduino IDE → `Datei > Voreinstellungen > Zusätzliche Boardverwalter-URLs`:
+     `https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json`
+   - Dann: `Werkzeuge > Board > Boardverwalter` → nach **"esp32"** suchen → installieren
 
-2. **Hardware aufbauen:**
-   - Wasserstandssensor (YL-83): AO → **A0**, VCC → **5V**, GND → **GND** am Arduino
-   - Summer (passiv) → **D8** am Arduino
-   - Rote LED über 220-Ω-Widerstand → **D7** am Arduino
-   - Stummschalttaste zwischen **D3** und **GND** (kein Widerstand nötig, intern Pull-up)
-   - LCD (I2C): VCC → **5V**, GND → **GND**, SDA → **A4**, SCL → **A5**
+2. **Bibliotheken installieren:**
+   - `Sketch > Bibliothek einbinden > Bibliotheken verwalten`
+   - **UniversalTelegramBot** (von Brian Lough) installieren
+   - **ArduinoJson** (von Benoit Blanchon, Version 6.x) installieren
 
-3. **Arduino IDE öffnen:**
-   - Datei `src/WaterSensor_v2/WaterSensor_v2.ino` laden
+3. **WLAN und Telegram konfigurieren:**
+   - `src/WaterSensor_v3/WaterSensor_v3.ino` öffnen
+   - `WIFI_SSID`, `WIFI_PASSWORT`, `BOT_TOKEN` und `CHAT_ID` eintragen (siehe [Konfiguration](#konfiguration))
 
-4. **Board und Port auswählen:**
-   - Unter `Werkzeuge > Board` das richtige Arduino-Board wählen
-   - Unter `Werkzeuge > Port` den richtigen COM-Port auswählen
+4. **Hardware aufbauen:**
+   - Wasserstandssensor: AO → **GPIO34**, VCC → **3V3** oder 5V, GND → **GND**
+   - Summer (passiv) → **GPIO26**
+   - Rote LED über 220-Ω-Widerstand → **GPIO27**
+   - Stummschalttaste zwischen **GPIO25** und **GND**
 
-5. **Sketch hochladen:**
-   - Auf den **Upload**-Button klicken
+5. **Board auswählen:**
+   - `Werkzeuge > Board > ESP32 Arduino > ESP32 Dev Module`
+   - `Werkzeuge > Port` → richtigen COM-Port wählen
 
-6. **Seriellen Monitor öffnen (optional):**
-   - `Werkzeuge > Serieller Monitor`, Baudrate **9600**
+6. **Sketch hochladen und testen:**
+   - Upload-Button klicken
+   - Seriellen Monitor auf **115200 Baud** öffnen
+   - IP-Adresse ablesen, im Browser öffnen: `http://<IP-Adresse>`
+   - Sensor mit Wasser in Kontakt bringen → Telegram-Nachricht erscheint, Webinterface aktualisiert sich
 
-7. **Testen:**
-   - Sensor trocken → LCD: `Status: TROCKEN`, kein Alarm
-   - Sensor leicht feucht → LCD: `! FEUCHT !`, kurzer Warnton, LED leuchtet
-   - Sensor stark nass → LCD: `!! ALARM: NASS !!`, Dauerton, LED leuchtet
-   - Taste drücken → Buzzer stummgeschaltet (LCD zeigt „STUMM")
+---
+
+---
+
+## 🌐 Webinterface
+
+Nach dem Start ist das Webinterface im lokalen Netzwerk erreichbar:
+
+```
+http://<IP-Adresse>/        → Statusseite (auto-refresh alle 5 s)
+http://<IP-Adresse>/stumm   → Buzzer ein-/ausschalten
+```
+
+Die IP-Adresse wird beim Start im Seriellen Monitor ausgegeben.
+
+---
+
+## 📱 Telegram-Benachrichtigung
+
+Bei Übergang in Stufe **FEUCHT** oder **NASS** wird automatisch eine Nachricht gesendet.  
+Um Nachrichten-Flut zu vermeiden, beträgt die Mindestpause zwischen zwei Nachrichten **60 Sekunden** (konfigurierbar via `TELEGRAM_PAUSE_MS`).
+
+Beispielnachricht:
+```
+🏠 trtSmartHome Wassermelder
+ALARM – Wasser erkannt (NASS), Wert: 2345
+04.04.2026 14:32:11
+```
 
 ---
 
 ## 💡 Hinweise
 
-- Der Sensor gibt bei **Wasserkontakt niedrige Analogwerte** aus. Die Schwellen `SCHWELLE_FEUCHT` und `SCHWELLE_NASS` können im Sketch individuell angepasst werden.
-- Ab v2.0 wird ein **passiver Buzzer** benötigt (aktiver Buzzer liefert mit `tone()` keinen definierten Ton).
-- Der **220-Ω-Widerstand** vor der LED ist zwingend erforderlich.
-- LCD-I2C-Adresse: Standard `0x27` – falls kein Bild erscheint, `0x3F` testen oder einen I2C-Scanner-Sketch verwenden.
-- Baudrate des Seriellen Monitors muss auf **9600 Baud** eingestellt sein.
+- **WLAN:** Der ESP32 unterstützt nur **2,4-GHz**-Netzwerke (kein 5 GHz).
+- **Serieller Monitor:** Baudrate auf **115200 Baud** einstellen.
+- **Schwellenwerte:** Der ESP32-ADC arbeitet mit 0–4095 (12 Bit). Werte im trockenen und nassen Zustand im Seriellen Monitor ablesen und `SCHWELLE_FEUCHT` / `SCHWELLE_NASS` entsprechend anpassen.
+- **Telegram-Token:** Niemals öffentlich teilen oder in ein öffentliches Repository einchecken.
+- **Offline-Modus:** Ist kein WLAN verfügbar, arbeitet der Sketch als lokaler Alarm-Melder (kein Web, kein Telegram, aber LED + Buzzer funktionieren weiterhin).
 
 ---
 
