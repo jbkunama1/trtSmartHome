@@ -2,7 +2,7 @@
 
 ![License](https://img.shields.io/badge/Lizenz-MIT-blue.svg)
 ![Language](https://img.shields.io/badge/Sprache-Arduino-teal.svg)
-![Version](https://img.shields.io/badge/Version-1.1-green.svg)
+![Version](https://img.shields.io/badge/Version-2.0-green.svg)
 
 > **trtSmartHome** ist ein pädagogisches Modellprojekt eines Smart Home, aufgebaut mit Arduino.  
 > Dieses Modul implementiert einen **Wassermelder** (Water Leak Detection), der bei Wasserkontakt optisch (LED) und akustisch (Buzzer) Alarm schlägt.
@@ -15,7 +15,7 @@
 2. [Projektbeschreibung](#projektbeschreibung)
 3. [Materialliste](#materialliste)
 4. [Pinbelegung](#pinbelegung)
-5. [Sketch – Version 1.1](#sketch--version-11)
+5. [Sketch – Version 2.0](#sketch--version-20)
 6. [Setup / Inbetriebnahme](#setup--inbetriebnahme)
 7. [Hinweise](#hinweise)
 8. [Dokumentation](#dokumentation)
@@ -25,10 +25,11 @@
 
 ## 🗂️ Versionsverlauf
 
-| Version | Datei                                                                         | Highlights                                                      |
-|---------|-------------------------------------------------------------------------------|-----------------------------------------------------------------|
-| **1.1** | [`src/WaterSensor_v1_1/`](src/WaterSensor_v1_1/WaterSensor_v1_1.ino) ← aktuell | `millis()` statt `delay()`, Debouncing für stabile Erkennung   |
-| 1.5     | [`src/WaterSensor_v1_5/`](src/WaterSensor_v1_5/WaterSensor_v1_5.ino)          | Basisversion – einfacher Alarm mit digitalem Sensor             |
+| Version | Datei                                                                         | Highlights                                                                   |
+|---------|-------------------------------------------------------------------------------|------------------------------------------------------------------------------|
+| **2.0** | [`src/WaterSensor_v2/`](src/WaterSensor_v2/WaterSensor_v2.ino) ← aktuell     | Analoge Alarmstufen, LCD-Display (I2C), Stummschalttaste                     |
+| 1.1     | [`src/WaterSensor_v1_1/`](src/WaterSensor_v1_1/WaterSensor_v1_1.ino)          | `millis()` statt `delay()`, Debouncing für stabile Erkennung                |
+| 1.5     | [`src/WaterSensor_v1_5/`](src/WaterSensor_v1_5/WaterSensor_v1_5.ino)          | Basisversion – einfacher Alarm mit digitalem Sensor                          |
 
 ---
 
@@ -45,25 +46,32 @@ Dieses Modul – der **Wassermelder** – erkennt Wasserkontakt am Sensor und re
 
 Bei trockenem Sensor bleibt alles ruhig und die Ausgabe lautet `✔ Kein Wasser erkannt.`
 
-### ✨ Neu in Version 1.1
+### ✨ Neu in Version 2.0
 
-- **Nicht-blockierendes Timing:** `delay(500)` wurde durch `millis()` ersetzt. Der Arduino bleibt jederzeit reaktionsfähig – kein „Einfrieren" mehr während der Wartezeit.
-- **Debouncing (Entprellung):** Erst nach **3 aufeinanderfolgenden gleichen Messwerten** wird ein Zustandswechsel akzeptiert. Fehlerhafte Kurzauslösungen durch Vibration oder Schmutz werden so zuverlässig unterdrückt.
+- **Analoge Alarmstufen:** Statt nur EIN/AUS werden drei Stufen unterschieden:
+  - ✅ **TROCKEN** – kein Alarm
+  - ⚠️ **FEUCHT** – kurzer Warnton (800 Hz), LED leuchtet
+  - 🚨 **NASS** – Dauerton (1200 Hz), LED leuchtet
+- **LCD-Display (16×2, I2C):** Zeigt Alarmstufe und aktuellen Analogwert direkt am Gerät an – kein Serial Monitor nötig.
+- **Stummschalttaste:** Drücken deaktiviert den Buzzer, LED und LCD bleiben aktiv. Erneutes Drücken reaktiviert ihn.
+- Aufgebaut auf v1.1 (weiterhin `millis()` + Debouncing enthalten)
 
 ---
 
 ## 📦 Materialliste
 
-| Nr. | Komponente                       | Anzahl   |
-|-----|----------------------------------|----------|
-| 1   | Arduino Uno / Nano / Mega        | 1×       |
-| 2   | Wasserstandssensor (z. B. YL-83) | 1×       |
-| 3   | Summer (Buzzer, aktiv)           | 1×       |
-| 4   | Rote LED                         | 1×       |
-| 5   | Widerstand 220 Ω                 | 1×       |
-| 6   | Jumper-Kabel                     | mehrere  |
-| 7   | Breadboard                       | 1×       |
-| 8   | USB-Kabel                        | 1×       |
+| Nr. | Komponente                         | Anzahl   |
+|-----|------------------------------------|----------|
+| 1   | Arduino Uno / Nano / Mega          | 1×       |
+| 2   | Wasserstandssensor (z. B. YL-83)   | 1×       |
+| 3   | Summer (Buzzer, **passiv**)        | 1×       |
+| 4   | Rote LED                           | 1×       |
+| 5   | Widerstand 220 Ω                   | 1×       |
+| 6   | LCD-Display 16×2 (I2C, z. B. PCF8574) | 1×    |
+| 7   | Taster / Drucktaste                | 1×       |
+| 8   | Jumper-Kabel                       | mehrere  |
+| 9   | Breadboard                         | 1×       |
+| 10  | USB-Kabel                          | 1×       |
 
 ---
 
@@ -71,130 +79,104 @@ Bei trockenem Sensor bleibt alles ruhig und die Ausgabe lautet `✔ Kein Wasser 
 
 | Komponente                    | Arduino-Pin | Modus          |
 |-------------------------------|-------------|----------------|
-| Wasserstandssensor (Signal)   | D2          | INPUT          |
-| Summer (Buzzer)               | D8          | OUTPUT         |
+| Wasserstandssensor (AO)       | A0          | ANALOG INPUT   |
+| Wasserstandssensor (DO)       | D2          | INPUT          |
+| Summer (Buzzer, passiv)       | D8          | OUTPUT (PWM)   |
 | Rote LED                      | D7          | OUTPUT         |
+| Stummschalttaste              | D3          | INPUT_PULLUP   |
+| LCD SDA                       | A4 (SDA)    | I2C Daten      |
+| LCD SCL                       | A5 (SCL)    | I2C Takt       |
 | Wasserstandssensor (VCC)      | 5V          | Stromversorgung|
 | Wasserstandssensor (GND)      | GND         | Masse          |
+| LCD VCC                       | 5V          | Stromversorgung|
+| LCD GND                       | GND         | Masse          |
 
-> 💡 **Hinweis:** Die rote LED wird über einen **220-Ω-Widerstand** an Pin D7 angeschlossen, um den Strom zu begrenzen.
+> 💡 **Hinweis:** Die rote LED wird über einen **220-Ω-Widerstand** an Pin D7 angeschlossen.  
+> 💡 **LCD-Adresse:** Standard ist `0x27`. Falls das Display nicht reagiert, `0x3F` im Sketch probieren.  
+> 💡 **Buzzer:** In v2.0 wird `tone()` verwendet → **passiver Buzzer** erforderlich (nicht aktiv).
 
 ---
 
-## 🖥️ Sketch – Version 1.1
+## 🖥️ Sketch – Version 2.0
 
-Datei: [`src/WaterSensor_v1_1/WaterSensor_v1_1.ino`](src/WaterSensor_v1_1/WaterSensor_v1_1.ino)
+Datei: [`src/WaterSensor_v2/WaterSensor_v2.ino`](src/WaterSensor_v2/WaterSensor_v2.ino)
 
 ```cpp
 // ============================================================
-// trtSmartHome – Wassermelder (Smarthome Modell)
-// Version: 1.1
-// Beschreibung: Erkennt Wasser und löst Alarm aus.
-//               Verbesserungen gegenüber v1.5:
-//               - Nicht-blockierendes Timing mit millis()
-//               - Entprellung (Debouncing) für stabile Erkennung
+// trtSmartHome – Wassermelder v2.0
+// Analoge Alarmstufen, LCD (I2C), Stummschalttaste
 // ============================================================
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
 
-// --- Pin-Belegung ---
-const int wasserSensorPin = 2;  // Digitales Signal vom Sensor
-const int summerPin       = 8;  // Summer (Buzzer)
-const int ledPin          = 7;  // Rote LED
+const int wasserSensorAnalog  = A0;
+const int summerPin           = 8;
+const int ledPin              = 7;
+const int stummTastePin       = 3;
 
-// --- Debouncing-Konfiguration ---
-const int  DEBOUNCE_COUNT = 3;    // Anzahl gleicher Messungen zur Bestätigung
-const long INTERVAL_MS    = 500;  // Messintervall in Millisekunden
+LiquidCrystal_I2C lcd(0x27, 16, 2);
 
-// --- Zustandsvariablen ---
-int  letzterStatus    = HIGH;
-int  roherStatus      = HIGH;
-int  debounceZaehler  = 0;
+const int SCHWELLE_FEUCHT = 100;
+const int SCHWELLE_NASS   = 500;
+const long INTERVAL_MS    = 500;
+
 unsigned long letzteZeit = 0;
+bool stummgeschaltet = false;
+bool letzteTasteGedrueckt = false;
+int  letzteStufe = -1;
 
-void setup() {
-  pinMode(wasserSensorPin, INPUT);
-  pinMode(summerPin, OUTPUT);
-  pinMode(ledPin, OUTPUT);
-  Serial.begin(9600);
-  Serial.println("trtSmartHome – Wassermelder v1.1 bereit.");
-}
+enum Alarmstufe { TROCKEN, FEUCHT, NASS };
 
-void loop() {
-  unsigned long jetzt = millis();
-
-  if (jetzt - letzteZeit >= INTERVAL_MS) {
-    letzteZeit = jetzt;
-
-    int aktuellerRohwert = digitalRead(wasserSensorPin);
-
-    if (aktuellerRohwert == roherStatus) {
-      debounceZaehler++;
-    } else {
-      roherStatus     = aktuellerRohwert;
-      debounceZaehler = 1;
-    }
-
-    if (debounceZaehler >= DEBOUNCE_COUNT && aktuellerRohwert != letzterStatus) {
-      letzterStatus   = aktuellerRohwert;
-      debounceZaehler = 0;
-      alarmAktualisieren(letzterStatus);
-    }
-  }
-}
-
-void alarmAktualisieren(int status) {
-  if (status == LOW) {
-    digitalWrite(summerPin, HIGH);
-    digitalWrite(ledPin, HIGH);
-    Serial.println("⚠ Wasser erkannt!");
-  } else {
-    digitalWrite(summerPin, LOW);
-    digitalWrite(ledPin, LOW);
-    Serial.println("✔ Kein Wasser erkannt.");
-  }
-}
+void setup() { /* ... */ }
+void loop()  { /* ... */ }
 ```
+
+> Den vollständigen Sketch findest du in [`src/WaterSensor_v2/WaterSensor_v2.ino`](src/WaterSensor_v2/WaterSensor_v2.ino).
 
 ---
 
 ## 🔧 Setup / Inbetriebnahme
 
-1. **Hardware aufbauen:**
-   - Wasserstandssensor (YL-83) an Breadboard anschließen
-   - Signal-Pin (OUT) des Sensors → **D2** am Arduino
-   - VCC des Sensors → **5V** am Arduino
-   - GND des Sensors → **GND** am Arduino
-   - Summer (Buzzer) → **D8** am Arduino (GND gemeinsam)
+1. **Bibliothek installieren:**
+   - Arduino IDE öffnen → `Sketch > Bibliothek einbinden > Bibliotheken verwalten`
+   - Nach **"LiquidCrystal I2C"** suchen (Autor: Frank de Brabander)
+   - Installieren
+
+2. **Hardware aufbauen:**
+   - Wasserstandssensor (YL-83): AO → **A0**, VCC → **5V**, GND → **GND** am Arduino
+   - Summer (passiv) → **D8** am Arduino
    - Rote LED über 220-Ω-Widerstand → **D7** am Arduino
+   - Stummschalttaste zwischen **D3** und **GND** (kein Widerstand nötig, intern Pull-up)
+   - LCD (I2C): VCC → **5V**, GND → **GND**, SDA → **A4**, SCL → **A5**
 
-2. **Arduino IDE öffnen:**
-   - Datei `src/WaterSensor_v1_1/WaterSensor_v1_1.ino` laden
+3. **Arduino IDE öffnen:**
+   - Datei `src/WaterSensor_v2/WaterSensor_v2.ino` laden
 
-3. **Board und Port auswählen:**
-   - Unter `Werkzeuge > Board` das richtige Arduino-Board wählen (z. B. *Arduino Uno*)
+4. **Board und Port auswählen:**
+   - Unter `Werkzeuge > Board` das richtige Arduino-Board wählen
    - Unter `Werkzeuge > Port` den richtigen COM-Port auswählen
 
-4. **Sketch hochladen:**
-   - Auf den **Upload**-Button klicken (→ Pfeil-Symbol)
+5. **Sketch hochladen:**
+   - Auf den **Upload**-Button klicken
 
-5. **Seriellen Monitor öffnen:**
-   - `Werkzeuge > Serieller Monitor` öffnen
-   - Baudrate auf **9600** einstellen
-   - Status-Meldungen beobachten
+6. **Seriellen Monitor öffnen (optional):**
+   - `Werkzeuge > Serieller Monitor`, Baudrate **9600**
 
-6. **Testen:**
-   - Sensor trocken → Ausgabe: `✔ Kein Wasser erkannt.`
-   - Sensor mit Wasser in Kontakt bringen → Ausgabe: `⚠ Wasser erkannt!`, LED leuchtet, Buzzer ertönt
+7. **Testen:**
+   - Sensor trocken → LCD: `Status: TROCKEN`, kein Alarm
+   - Sensor leicht feucht → LCD: `! FEUCHT !`, kurzer Warnton, LED leuchtet
+   - Sensor stark nass → LCD: `!! ALARM: NASS !!`, Dauerton, LED leuchtet
+   - Taste drücken → Buzzer stummgeschaltet (LCD zeigt „STUMM")
 
 ---
 
 ## 💡 Hinweise
 
-- Der Sensor gibt bei **Wasserkontakt LOW** aus (aktiv-niedrig). Dies ist bei der Auswertung im Sketch berücksichtigt.
-- Wird ein **passiver Buzzer** verwendet, muss der Sketch angepasst werden (PWM-Signal statt HIGH/LOW).
-- Der **220-Ω-Widerstand** vor der LED ist zwingend erforderlich, um die LED nicht zu beschädigen.
-- Der Sketch wurde für den Einsatz im Unterricht entwickelt und ist bewusst einfach gehalten.
+- Der Sensor gibt bei **Wasserkontakt niedrige Analogwerte** aus. Die Schwellen `SCHWELLE_FEUCHT` und `SCHWELLE_NASS` können im Sketch individuell angepasst werden.
+- Ab v2.0 wird ein **passiver Buzzer** benötigt (aktiver Buzzer liefert mit `tone()` keinen definierten Ton).
+- Der **220-Ω-Widerstand** vor der LED ist zwingend erforderlich.
+- LCD-I2C-Adresse: Standard `0x27` – falls kein Bild erscheint, `0x3F` testen oder einen I2C-Scanner-Sketch verwenden.
 - Baudrate des Seriellen Monitors muss auf **9600 Baud** eingestellt sein.
-- **Debounce-Zähler** und **Intervall** können oben in den Konstanten `DEBOUNCE_COUNT` und `INTERVAL_MS` angepasst werden.
 
 ---
 
