@@ -1,3 +1,5 @@
+[![Buy me a coffee](https://cdn.buymeacoffee.com/buttons/default-orange.png)](https://www.buymeacoffee.com/highfish)
+
 # trtSmartHome – Arduino Smarthome Water Sensor V1.5
 
 Ein Arduino-basiertes Smarthome-Projekt zur Wasserstandserkennung mit LED-Statusanzeige und Buzzer-Alarm.
